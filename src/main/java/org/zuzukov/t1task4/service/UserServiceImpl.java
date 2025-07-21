@@ -5,11 +5,13 @@ import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.zuzukov.t1task4.dto.*;
+import org.zuzukov.t1task4.enitty.Role;
 import org.zuzukov.t1task4.enitty.User;
 import org.zuzukov.t1task4.repository.UserRepository;
 
 import javax.naming.AuthenticationException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
     @Service
@@ -71,8 +73,7 @@ import java.util.UUID;
             user.setLastName(userDto.getLastName());
             user.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
-            // по умолчанию, например, ROLE_GUEST
-            user.setRoles(Set.of("ROLE_GUEST")); // или enum
+            user.setRoles(Set.of(Role.ROLE_GUEST));
 
             userRepository.save(user);
             return user.getUserId().toString();
@@ -84,9 +85,9 @@ import java.util.UUID;
             dto.setFirstName(user.getFirstName());
             dto.setLastName(user.getLastName());
             dto.setEmail(user.getEmail());
-            dto.setPassword(user.getPassword()); // можно исключить
+            dto.setPassword(user.getPassword());
             return dto;
         }
     }
 
-}
+
