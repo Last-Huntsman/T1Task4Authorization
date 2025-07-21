@@ -67,7 +67,7 @@ import java.util.UUID;
             }
 
             User user = new User();
-            user.setUserId(UUID.randomUUID());
+
             user.setEmail(userDto.getEmail());
             user.setFirstName(userDto.getFirstName());
             user.setLastName(userDto.getLastName());

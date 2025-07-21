@@ -26,13 +26,19 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String token = getTokenFromRequest(request);
-        if (token != null && jwtService.validateJwtToken(token)) {
-            setCustomUserDetailsToSecurityContextHolder(token);
+        try {
+            String token = getTokenFromRequest(request);
+            if (token != null && jwtService.validateJwtToken(token)) {
+                setCustomUserDetailsToSecurityContextHolder(token);
+            }
+        } catch (Exception ex) {
+            // Не ставим аутентификацию — просто пропускаем запрос дальше
+            logger.error("Cannot set user authentication: {}");
         }
-        filterChain.doFilter(request, response);
 
+        filterChain.doFilter(request, response);
     }
+
 
     private void setCustomUserDetailsToSecurityContextHolder(String token) {
         String email = jwtService.getEmailFromToken(token);
@@ -48,6 +54,11 @@ public class JwtFilter extends OncePerRequestFilter {
             return bearerToken.substring(7);
         }
         return null;
+    }
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/auth/register") || path.startsWith("/auth/login") || path.startsWith("/auth/refresh");
     }
 
 

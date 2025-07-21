@@ -17,7 +17,7 @@ import java.util.Date;
 @Component
 public class JwtService {
     private final Logger log = LoggerFactory.getLogger(getClass());
-    @Value("8d73599d037d1116ccf14edef00732b5")
+    @Value("${jwt.secret}")
     private String jwtSecret;
 
     public JwtAuthenticationDto generateJwtAuthenticationDto(String email) {
@@ -27,10 +27,15 @@ public class JwtService {
     return jwtAuthenticationDto;}
 
     public JwtAuthenticationDto refreshBaseToken(String email, String refreshToken) {
+        if (!validateRefreshToken(refreshToken, email)) {
+            throw new RuntimeException("Invalid or expired refresh token");
+        }
+
         JwtAuthenticationDto jwtAuthenticationDto = new JwtAuthenticationDto();
         jwtAuthenticationDto.setToken(generateJwtToken(email));
         jwtAuthenticationDto.setRefreshToken(refreshToken);
-                return jwtAuthenticationDto;}
+        return jwtAuthenticationDto;
+    }
 
     public String generateJwtToken(String email) {
         Date date = Date.from(LocalDateTime.now().plusMinutes(1).atZone(ZoneId.systemDefault()).toInstant());
@@ -44,7 +49,7 @@ public class JwtService {
         Claims claims = Jwts.parser()
                 .verifyWith(getSecretKey())
                 .build()
-                .parseEncryptedClaims(token)
+                .parseSignedClaims(token)
                 .getPayload();
         return claims.getSubject();
     }
@@ -86,6 +91,31 @@ public class JwtService {
     public SecretKey getSecretKey() {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+    public boolean validateRefreshToken(String refreshToken, String email) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(refreshToken)
+                    .getPayload();
+
+            String subject = claims.getSubject();
+            Date expiration = claims.getExpiration();
+            if (!subject.equals(email)) {
+                log.info("Email in token does not match");
+                return false;
+            }
+            if (expiration.before(new Date())) {
+                log.info("Refresh token is expired");
+                return false;
+            }
+            return true;
+
+        } catch (Exception e) {
+            log.info("Invalid refresh token: {}", e.getMessage());
+            return false;
+        }
     }
 
 

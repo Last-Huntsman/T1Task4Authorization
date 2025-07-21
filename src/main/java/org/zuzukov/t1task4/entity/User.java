@@ -29,6 +29,9 @@ public class User {
 
     @Column(name = "password", nullable = false)
     private String password;
+    @Version
+    @Column(name = "version")
+    private Integer version;
 
 
     @ElementCollection(fetch = FetchType.EAGER)
