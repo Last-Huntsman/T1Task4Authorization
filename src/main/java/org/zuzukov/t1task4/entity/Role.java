@@ -1,4 +1,4 @@
-package org.zuzukov.t1task4.enitty;
+package org.zuzukov.t1task4.entity;
 
 public enum Role {
     ROLE_ADMIN,

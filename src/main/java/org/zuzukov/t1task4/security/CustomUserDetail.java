@@ -3,8 +3,8 @@ package org.zuzukov.t1task4.security;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.zuzukov.t1task4.enitty.Role;
-import org.zuzukov.t1task4.enitty.User;
+import org.zuzukov.t1task4.entity.Role;
+import org.zuzukov.t1task4.entity.User;
 
 import java.util.Collection;
 import java.util.Set;
@@ -17,6 +17,7 @@ public class CustomUserDetail implements UserDetails {
     public CustomUserDetail(User user) {
         this.user = user;
     }
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

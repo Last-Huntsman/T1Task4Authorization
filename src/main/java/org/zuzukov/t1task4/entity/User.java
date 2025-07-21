@@ -1,4 +1,4 @@
-package org.zuzukov.t1task4.enitty;
+package org.zuzukov.t1task4.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -36,5 +36,4 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
     private Set<Role> roles;
-
 }

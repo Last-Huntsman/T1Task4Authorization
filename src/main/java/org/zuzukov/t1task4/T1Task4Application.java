@@ -1,4 +1,4 @@
-package org.zuzukov.t1task4.auth;
+package org.zuzukov.t1task4;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -5,8 +5,8 @@ import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.zuzukov.t1task4.dto.*;
-import org.zuzukov.t1task4.enitty.Role;
-import org.zuzukov.t1task4.enitty.User;
+import org.zuzukov.t1task4.entity.Role;
+import org.zuzukov.t1task4.entity.User;
 import org.zuzukov.t1task4.repository.UserRepository;
 
 import javax.naming.AuthenticationException;
