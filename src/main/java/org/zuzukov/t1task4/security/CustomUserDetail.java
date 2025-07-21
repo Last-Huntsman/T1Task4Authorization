@@ -7,7 +7,7 @@ import org.zuzukov.t1task4.enitty.User;
 import java.util.Collection;
 import java.util.List;
 
-public record CustomUserDetailService(User user) implements UserDetails {
+public record CustomUserDetail(User user) implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();
