@@ -13,7 +13,10 @@ import javax.naming.AuthenticationException;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
+//    {
+//        "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZXhwIjoxNzUzMDk4MTI3fQ.RJFF0Q2IflndetbR3c3aSmd61TyY_ezykynBlRpTBZ8",
+//            "refreshToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZXhwIjoxNzUzMTg0NDY3fQ.NvxpLnwSnVLyk3SekcAAS0TRmqoWO1_NpI0nUN4SE74"
+//    }
     private final UserService userService;
 
     @PostMapping("/register")
@@ -41,4 +44,10 @@ public class AuthController {
             throws ChangeSetPersister.NotFoundException {
         return ResponseEntity.ok(userService.getUserByEmail(email));
     }
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestBody TokenDto tokenDto) {
+        userService.revokeToken(tokenDto.getToken());
+        return ResponseEntity.ok("Token has been revoked");
+    }
+
 }

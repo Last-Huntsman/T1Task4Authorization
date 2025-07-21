@@ -5,11 +5,14 @@ import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.zuzukov.t1task4.dto.*;
+import org.zuzukov.t1task4.entity.RevokedToken;
 import org.zuzukov.t1task4.entity.Role;
 import org.zuzukov.t1task4.entity.User;
+import org.zuzukov.t1task4.repository.RevokedTokenRepository;
 import org.zuzukov.t1task4.repository.UserRepository;
 
 import javax.naming.AuthenticationException;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -17,7 +20,7 @@ import java.util.UUID;
     @Service
     @RequiredArgsConstructor
     public class UserServiceImpl implements UserService {
-
+        private final RevokedTokenRepository revokedTokenRepository;
         private final UserRepository userRepository;
         private final JwtService jwtService;
         private final PasswordEncoder passwordEncoder;
@@ -88,6 +91,16 @@ import java.util.UUID;
             dto.setPassword(user.getPassword());
             return dto;
         }
+        @Override
+        public void revokeToken(String token) {
+            if (!revokedTokenRepository.existsByToken(token)) {
+                RevokedToken revokedToken = new RevokedToken();
+                revokedToken.setToken(token);
+                revokedToken.setRevokedAt(LocalDateTime.now());
+                revokedTokenRepository.save(revokedToken);
+            }
+        }
+
     }
 
 

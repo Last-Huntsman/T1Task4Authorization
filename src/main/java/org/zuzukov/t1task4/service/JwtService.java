@@ -3,22 +3,25 @@ package org.zuzukov.t1task4.service;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zuzukov.t1task4.dto.JwtAuthenticationDto;
+import org.zuzukov.t1task4.repository.RevokedTokenRepository;
 
 import javax.crypto.SecretKey;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
-
+@RequiredArgsConstructor
 @Component
 public class JwtService {
     private final Logger log = LoggerFactory.getLogger(getClass());
     @Value("${jwt.secret}")
     private String jwtSecret;
+    private final RevokedTokenRepository revokedTokenRepository;
 
     public JwtAuthenticationDto generateJwtAuthenticationDto(String email) {
         JwtAuthenticationDto jwtAuthenticationDto = new JwtAuthenticationDto();
@@ -94,6 +97,10 @@ public class JwtService {
     }
     public boolean validateRefreshToken(String refreshToken, String email) {
         try {
+            if (revokedTokenRepository.existsByToken(refreshToken)) {
+                log.info("Token is revoked");
+                return false;
+            }
             Claims claims = Jwts.parser()
                     .verifyWith(getSecretKey())
                     .build()
