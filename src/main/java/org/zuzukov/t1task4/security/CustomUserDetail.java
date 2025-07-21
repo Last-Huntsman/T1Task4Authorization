@@ -15,11 +15,12 @@ public record CustomUserDetail(User user) implements UserDetails {
 
     @Override
     public String getPassword() {
-        return getPassword();
+        return user.getPassword(); // а не getPassword()
     }
 
     @Override
     public String getUsername() {
-        return getUsername();
+        return user.getEmail(); // или другой уникальный логин
     }
+
 }
