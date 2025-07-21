@@ -16,5 +16,8 @@ public interface UserService {
     UserDto getUserByEmail(String email) throws ChangeSetPersister.NotFoundException;
     String addUser(UserDto user);
      void revokeToken(String token);
+    public boolean validateToken(String token, String email);
+
+
 
 }

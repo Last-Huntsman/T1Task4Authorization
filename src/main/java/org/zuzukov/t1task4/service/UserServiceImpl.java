@@ -100,6 +100,11 @@ import java.util.UUID;
                 revokedTokenRepository.save(revokedToken);
             }
         }
+        public boolean validateToken(String token, String email) {
+            return jwtService.validateJwtToken(token) ;
+//           && jwtService.getEmailFromToken(token).equals(email);
+        }
+
 
     }
 

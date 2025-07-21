@@ -40,10 +40,22 @@ public class AuthController {
     }
 
     @GetMapping("/me/{email}")
-    public ResponseEntity<UserDto> getUser(@PathVariable String email)
+    public ResponseEntity<?> getUser(
+            @PathVariable String email,
+            @RequestHeader("Authorization") String authorizationHeader)
             throws ChangeSetPersister.NotFoundException {
+
+        String token = authorizationHeader.replace("Bearer ", "");
+        if (!userService.validateToken(token, email)) {
+            return ResponseEntity
+                    .status(401)
+                    .body("Unauthorized: Invalid or expired token for given email");
+        }
+
         return ResponseEntity.ok(userService.getUserByEmail(email));
     }
+
+
     @PostMapping("/logout")
     public ResponseEntity<String> logout(@RequestBody TokenDto tokenDto) {
         userService.revokeToken(tokenDto.getToken());

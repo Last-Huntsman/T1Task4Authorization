@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zuzukov.t1task4.dto.JwtAuthenticationDto;
+import org.zuzukov.t1task4.entity.RevokedToken;
 import org.zuzukov.t1task4.repository.RevokedTokenRepository;
 
 import javax.crypto.SecretKey;
@@ -34,17 +35,26 @@ public class JwtService {
             throw new RuntimeException("Invalid or expired refresh token");
         }
 
+        if (!revokedTokenRepository.existsByToken(refreshToken)) {
+            RevokedToken revokedToken = new RevokedToken();
+            revokedToken.setToken(refreshToken);
+            revokedToken.setRevokedAt(LocalDateTime.now());
+            revokedTokenRepository.save(revokedToken);
+        }
+
         JwtAuthenticationDto jwtAuthenticationDto = new JwtAuthenticationDto();
         jwtAuthenticationDto.setToken(generateJwtToken(email));
-        jwtAuthenticationDto.setRefreshToken(refreshToken);
+        jwtAuthenticationDto.setRefreshToken(generateRefreshJwtToken(email));
         return jwtAuthenticationDto;
     }
+
 
     public String generateJwtToken(String email) {
         Date date = Date.from(LocalDateTime.now().plusMinutes(1).atZone(ZoneId.systemDefault()).toInstant());
         return Jwts.builder()
                 .subject(email).
                 expiration(date).
+                id(java.util.UUID.randomUUID().toString()).
                 signWith(getSecretKey())
                 .compact();
     }
@@ -52,7 +62,9 @@ public class JwtService {
         Claims claims = Jwts.parser()
                 .verifyWith(getSecretKey())
                 .build()
+
                 .parseSignedClaims(token)
+
                 .getPayload();
         return claims.getSubject();
     }
@@ -61,16 +73,16 @@ public class JwtService {
         return Jwts.builder()
                 .subject(email).
                 expiration(date).
+                  id(java.util.UUID.randomUUID().toString()).
                 signWith(getSecretKey())
                 .compact();
     }
     public boolean validateJwtToken(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(getSecretKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getBody();
+            if (revokedTokenRepository.existsByToken(token)) {
+                log.info("Token is revoked");
+                return false;
+            }
             return true;
 
         }
