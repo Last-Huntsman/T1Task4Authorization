@@ -4,6 +4,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,126 +17,134 @@ import javax.crypto.SecretKey;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.UUID;
+
 @RequiredArgsConstructor
 @Component
 public class JwtService {
     private final Logger log = LoggerFactory.getLogger(getClass());
-    @Value("${jwt.secret}")
-    private String jwtSecret;
     private final RevokedTokenRepository revokedTokenRepository;
 
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${jwt.encryption-secret}")
+    private String jwtEncryptionSecret;
+
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+    }
+
+    private SecretKey getEncryptionKey() {
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtEncryptionSecret));
+    }
+
     public JwtAuthenticationDto generateJwtAuthenticationDto(String email) {
-        JwtAuthenticationDto jwtAuthenticationDto = new JwtAuthenticationDto();
-        jwtAuthenticationDto.setToken(generateJwtToken(email));
-        jwtAuthenticationDto.setRefreshToken(generateRefreshJwtToken(email));
-    return jwtAuthenticationDto;}
-
-    public JwtAuthenticationDto refreshBaseToken(String email, String refreshToken) {
-        if (!validateRefreshToken(refreshToken, email)) {
-            throw new RuntimeException("Invalid or expired refresh token");
-        }
-
-        if (!revokedTokenRepository.existsByToken(refreshToken)) {
-            RevokedToken revokedToken = new RevokedToken();
-            revokedToken.setToken(refreshToken);
-            revokedToken.setRevokedAt(LocalDateTime.now());
-            revokedTokenRepository.save(revokedToken);
-        }
-
         JwtAuthenticationDto jwtAuthenticationDto = new JwtAuthenticationDto();
         jwtAuthenticationDto.setToken(generateJwtToken(email));
         jwtAuthenticationDto.setRefreshToken(generateRefreshJwtToken(email));
         return jwtAuthenticationDto;
     }
 
-
     public String generateJwtToken(String email) {
-        Date date = Date.from(LocalDateTime.now().plusMinutes(1).atZone(ZoneId.systemDefault()).toInstant());
+        Date expiry = Date.from(LocalDateTime.now().plusMinutes(5).atZone(ZoneId.systemDefault()).toInstant());
+
         return Jwts.builder()
-                .subject(email).
-                expiration(date).
-                id(java.util.UUID.randomUUID().toString()).
-                signWith(getSecretKey())
+                .subject(email)
+                .expiration(expiry)
+                .id(UUID.randomUUID().toString())
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+//                .encryptWith(getEncryptionKey(), Jwts.ENC.A256GCM)
                 .compact();
     }
-    public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSecretKey())
-                .build()
 
-                .parseSignedClaims(token)
-
-                .getPayload();
-        return claims.getSubject();
-    }
     public String generateRefreshJwtToken(String email) {
-        Date date = Date.from(LocalDateTime.now().plusDays(1).atZone(ZoneId.systemDefault()).toInstant());
+        Date expiry = Date.from(LocalDateTime.now().plusDays(1).atZone(ZoneId.systemDefault()).toInstant());
+
         return Jwts.builder()
-                .subject(email).
-                expiration(date).
-                  id(java.util.UUID.randomUUID().toString()).
-                signWith(getSecretKey())
+                .subject(email)
+                .expiration(expiry)
+                .id(UUID.randomUUID().toString())
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+//                .encryptWith(getEncryptionKey(), Jwts.ENC.A256GCM)
                 .compact();
     }
+
+    public JwtAuthenticationDto refreshBaseToken(String email, String refreshToken) {
+        if (!validateRefreshToken(refreshToken, email)) {
+            throw new RuntimeException("Invalid or expired refresh token");
+        }
+
+        String hashedToken = DigestUtils.sha256Hex(refreshToken);
+
+        if (!revokedTokenRepository.existsByToken(hashedToken)) {
+            RevokedToken revoked = new RevokedToken();
+            revoked.setToken(hashedToken);
+            revoked.setRevokedAt(LocalDateTime.now());
+            revokedTokenRepository.save(revoked);
+        }
+
+        JwtAuthenticationDto dto = new JwtAuthenticationDto();
+        dto.setToken(generateJwtToken(email));
+        dto.setRefreshToken(generateRefreshJwtToken(email));
+        return dto;
+    }
+
     public boolean validateJwtToken(String token) {
         try {
-            if (revokedTokenRepository.existsByToken(token)) {
-                log.info("Token is revoked");
+            String hashedToken = DigestUtils.sha256Hex(token);
+            if (revokedTokenRepository.existsByToken(hashedToken)) {
+                log.warn("Token is revoked");
                 return false;
             }
-            return true;
 
-        }
-        catch (ExpiredJwtException e) {
-            log.info("Expired JWT token");
-        }
-        catch (UnsupportedJwtException e){
-            log.info("Unsupported JWT token");
-        }
-        catch (MalformedJwtException e){
-            log.info("Malformed JWT token");
-        }
-        catch (SecurityException e){
-            log.info("Security exception");
-        }
-        catch (Exception e){
-            log.info("Invalid token");
-        }
-        return false;
-    }
-    public SecretKey getSecretKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-    public boolean validateRefreshToken(String refreshToken, String email) {
-        try {
-            if (revokedTokenRepository.existsByToken(refreshToken)) {
-                log.info("Token is revoked");
-                return false;
-            }
-            Claims claims = Jwts.parser()
-                    .verifyWith(getSecretKey())
+            Jwts.parser()
+                    .verifyWith(getSigningKey())
                     .build()
-                    .parseSignedClaims(refreshToken)
-                    .getPayload();
+                    .parseSignedClaims(token); // используем parseSignedClaims, не parseEncryptedClaims
 
-            String subject = claims.getSubject();
-            Date expiration = claims.getExpiration();
-            if (!subject.equals(email)) {
-                log.info("Email in token does not match");
-                return false;
-            }
-            if (expiration.before(new Date())) {
-                log.info("Refresh token is expired");
-                return false;
-            }
             return true;
-
-        } catch (Exception e) {
-            log.info("Invalid refresh token: {}", e.getMessage());
+        } catch (JwtException e) {
+            log.warn("Token validation failed: {}", e.getMessage());
             return false;
         }
     }
 
 
+    public boolean validateRefreshToken(String token, String email) {
+        try {
+            if (revokedTokenRepository.existsByToken(token)) {
+                log.warn("Refresh token is revoked");
+                return false;
+            }
+
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            String subject = claims.getSubject();
+            Date expiration = claims.getExpiration();
+
+            if (!subject.equals(email)) return false;
+            if (expiration.before(new Date())) return false;
+
+            return true;
+        } catch (JwtException e) {
+            log.warn("Refresh token invalid: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    public String getEmailFromToken(String token) {
+        Claims claims = Jwts.parser()
+//                .decryptWith(getEncryptionKey())
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.getSubject();
+    }
 }

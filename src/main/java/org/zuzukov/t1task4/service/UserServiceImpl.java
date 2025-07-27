@@ -1,6 +1,7 @@
 package org.zuzukov.t1task4.service;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -95,14 +96,15 @@ import java.util.UUID;
         public void revokeToken(String token) {
             if (!revokedTokenRepository.existsByToken(token)) {
                 RevokedToken revokedToken = new RevokedToken();
-                revokedToken.setToken(token);
+                String hashedToken = DigestUtils.sha256Hex(token);
+                revokedToken.setToken(hashedToken);
                 revokedToken.setRevokedAt(LocalDateTime.now());
                 revokedTokenRepository.save(revokedToken);
             }
         }
         public boolean validateToken(String token, String email) {
-            return jwtService.validateJwtToken(token) ;
-//           && jwtService.getEmailFromToken(token).equals(email);
+            return jwtService.validateJwtToken(token)
+           && jwtService.getEmailFromToken(token).equals(email);
         }
 
 
